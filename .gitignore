@@ -1,3 +1,4 @@
 .env
 myenv/
 Data/
+faiss_index_database/
