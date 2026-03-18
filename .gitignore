@@ -2,3 +2,4 @@
 myenv/
 Data/
 faiss_index_database/
+__pycache__/

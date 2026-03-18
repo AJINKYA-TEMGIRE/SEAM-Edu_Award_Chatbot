@@ -1,14 +1,17 @@
-from typing import TypedDict , Literal
+from typing import TypedDict , Literal , List
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel
 from langgraph.graph import START , END , StateGraph
 from dotenv import load_dotenv
+from langchain_core.documents import Document
+from create_retriever import r
 
 load_dotenv()
 
 # Question : law , medical , other
 
+retrieve_ = r()
 llm = ChatGroq(model = "openai/gpt-oss-120b")
 
 # State
@@ -17,6 +20,7 @@ class State(TypedDict):
     redirect : str
     answer : str
     gk : bool
+    docs: List[Document]
 
 
 def redirect_law_medical(state: State) -> State:
@@ -50,8 +54,9 @@ def routing_work(state: State) -> State:
 def medical(state: State) -> State:
     return {"answer" : "Hello Take Care"}
 
-def law(state: State) -> State:
-    return {"answer" : "Yes you are correct"}
+def law_docs(state: State) -> State:
+    q = state["question"]
+    return {"docs": retrieve_.invoke(q)}
 
 def other(state: State) -> State:
     return {"answer" : "This is question is from outside."}
@@ -61,7 +66,7 @@ graph = StateGraph(State)
 
 graph.add_node("redirect_law_medical" , redirect_law_medical)
 graph.add_node("medical" , medical)
-graph.add_node("law" , law)
+graph.add_node("law_docs" , law_docs)
 graph.add_node("other" , other)
 
 
@@ -69,19 +74,20 @@ graph.add_edge(START , "redirect_law_medical")
 graph.add_conditional_edges("redirect_law_medical",
                             routing_work,
                             {"medical" : "medical",
-                             "law" : "law",
+                             "law" : "law_docs",
                              "other" : "other"})
-graph.add_edge("law" , END)
+graph.add_edge("law_docs" , END)
 graph.add_edge("medical" , END)
 graph.add_edge("other" , END)
 
 app = graph.compile()
 
-result = app.invoke({"question" : "What to do for kidney stone",
+result = app.invoke({"question" : "What is the criminal case?",
                   "redirect" : "",
-                  "answer" : ""})
+                  "answer" : "",
+                  "docs" : []})
 
-print(result["answer"])
+print(result["docs"])
 
 
 
