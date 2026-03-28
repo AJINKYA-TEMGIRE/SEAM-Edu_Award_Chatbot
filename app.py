@@ -13,27 +13,82 @@ st.set_page_config(
 # -------------------- CUSTOM CSS --------------------
 st.markdown("""
 <style>
+
+/* Main background */
 .main {
-    background-color: #0f172a;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
 }
+
+/* Title */
+h1 {
+    color: #38bdf8;
+    text-align: center;
+}
+
+/* Chat container spacing */
+.block-container {
+    padding-top: 2rem;
+}
+
+/* User message */
 .user-msg {
-    background-color: #1e293b;
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    color: white;
     padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 10px;
+    border-radius: 15px;
+    margin: 10px 0;
+    width: fit-content;
+    max-width: 70%;
+    margin-left: auto;
+    font-size: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
+
+/* Bot message */
 .bot-msg {
-    background-color: #020617;
+    background: linear-gradient(135deg, #10b981, #06b6d4);
+    color: white;
     padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 10px;
+    border-radius: 15px;
+    margin: 10px 0;
+    width: fit-content;
+    max-width: 70%;
+    font-size: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background: #020617;
+}
+
+/* Input */
+textarea {
+    border-radius: 10px !important;
+}
+
+/* Buttons */
+button {
+    border-radius: 10px !important;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white !important;
+}
+
+/* Alerts */
+.stAlert {
+    border-radius: 10px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 # -------------------- HEADER --------------------
-st.title("🧠 Medical AI Assistant")
-st.caption("RAG + LangGraph + Voice Enabled")
+st.markdown("""
+<h1>🧠 MedBrain</h1>
+<p style='text-align:center; color:#94a3b8;'>
+Ask anything. Heal Smarter 💊
+</p>
+""", unsafe_allow_html=True)
 
 # -------------------- SESSION STATE --------------------
 if "chat_history" not in st.session_state:
@@ -47,7 +102,15 @@ if "pending_question" not in st.session_state:
 
 # -------------------- SIDEBAR --------------------
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.markdown("## ⚙️ Settings")
+
+    st.markdown("""
+    🔹 **Model:** Local LLM  
+    🔹 **Retriever:** FAISS  
+    🔹 **Mode:** RAG + Agent  
+    """)
+
+    st.markdown("---")
 
     if st.button("🗑️ Clear Chat"):
         st.session_state.chat_history = []
@@ -56,11 +119,23 @@ with st.sidebar:
         st.rerun()
 
 # -------------------- CHAT DISPLAY --------------------
-st.subheader("💬 Chat")
+st.markdown("---")
+st.subheader("💬 Chat Interface")
 
 for chat in st.session_state.chat_history:
-    st.markdown(f"<div class='user-msg'>🧑‍💻 {chat['user']}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='bot-msg'>🤖 {chat['bot']}</div>", unsafe_allow_html=True)
+    # User (right)
+    st.markdown(f"""
+    <div style="display:flex; justify-content:flex-end;">
+        <div class='user-msg'>🧑‍💻 {chat['user']}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Bot (left)
+    st.markdown(f"""
+    <div style="display:flex; justify-content:flex-start;">
+        <div class='bot-msg'>🤖 {chat['bot']}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # -------------------- INPUT --------------------
 col1, col2 = st.columns([4, 1])
@@ -75,7 +150,6 @@ with col2:
 if audio_file is not None:
     current_audio = audio_file.getvalue()
 
-    # ✅ Process ONLY new audio
     if st.session_state.last_audio != current_audio:
 
         st.session_state.last_audio = current_audio
@@ -90,19 +164,17 @@ if audio_file is not None:
             with sr.AudioFile(tmp_path) as source:
                 audio_data = recognizer.record(source)
 
-            
+        
             text = recognizer.recognize_google(audio_data)
             st.success(f"🗣️ You said: {text}")
 
-            # ✅ Store for processing
             st.session_state.pending_question = text
-
             st.rerun()
 
-        
+      
+            st.error("")
 
 # -------------------- PROCESS --------------------
-# Priority: text input > voice input
 final_query = None
 
 if user_input:
@@ -110,7 +182,7 @@ if user_input:
 
 elif st.session_state.pending_question:
     final_query = st.session_state.pending_question
-    st.session_state.pending_question = None  # reset after use
+    st.session_state.pending_question = None
 
 # -------------------- RUN WORKFLOW --------------------
 if final_query:
@@ -125,7 +197,6 @@ if final_query:
 
         answer = result["answer"]
 
-        # Save chat
         st.session_state.chat_history.append({
             "user": final_query,
             "bot": answer
